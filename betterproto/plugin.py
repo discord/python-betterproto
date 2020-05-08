@@ -183,6 +183,9 @@ def generate_code(request, response):
         if not out:
             out = os.path.splitext(proto_file.name)[0].replace(os.path.sep, ".")
 
+        # Write as an init file.
+
+        out = os.path.join(out, '__init__')
         if out not in output_map:
             output_map[out] = {"package": proto_file.package, "files": []}
         output_map[out]["files"].append(proto_file)
@@ -354,19 +357,20 @@ def generate_code(request, response):
 
                 for j, method in enumerate(service.method):
                     if method.client_streaming:
-                        raise NotImplementedError("Client streaming not yet supported")
+                        print("Client streaming not yet supported", file=sys.stderr)
+                        continue
 
                     input_message = None
                     input_type = get_ref_type(
                         package, output["imports"], method.input_type
                     ).strip('"')
-                    for msg in output["messages"]:
-                        if msg["name"] == input_type:
-                            input_message = msg
-                            for field in msg["properties"]:
-                                if field["zero"] == "None":
-                                    output["typing_imports"].add("Optional")
-                            break
+                    #for msg in output["messages"]:
+                    #    if msg["name"] == input_type:
+                    #        input_message = msg
+                    #        for field in msg["properties"]:
+                    #            if field["zero"] == "None":
+                    #                output["typing_imports"].add("Optional")
+                    #        break
 
                     data["methods"].append(
                         {
@@ -386,8 +390,8 @@ def generate_code(request, response):
                         }
                     )
 
-                    if method.server_streaming:
-                        output["typing_imports"].add("AsyncGenerator")
+                    #if method.server_streaming:
+                    #    output["typing_imports"].add("AsyncGenerator")
 
                 output["services"].append(data)
 
@@ -416,7 +420,10 @@ def generate_code(request, response):
             base = ""
             for part in dirnames.split(os.path.sep):
                 base = os.path.join(base, part)
-                inits.add(base)
+                # Don't write inits that we are already writing.
+                key = os.path.join(base.replace(os.path.sep, '.')) + '/__init__'
+                if key not in output_map:
+                    inits.add(base)
 
     for base in inits:
         name = os.path.join(base, "__init__.py")

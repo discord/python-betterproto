@@ -12,9 +12,6 @@ from typing import {% for i in description.typing_imports %}{{ i }}{% if not loo
 {% endif %}
 
 import betterproto
-{% if description.services %}
-import grpclib
-{% endif %}
 
 {% for i in description.imports %}
 {{ i }}
@@ -56,42 +53,30 @@ class {{ message.py_name }}(betterproto.Message):
 
 
 {% endfor %}
+
 {% for service in description.services %}
-class {{ service.py_name }}Stub(betterproto.ServiceStub):
+class {{ service.py_name }}Stub(object):
     {% if service.comment %}
 {{ service.comment }}
 
     {% endif %}
-    {% for method in service.methods %}
-    async def {{ method.py_name }}(self{% if method.input_message and method.input_message.properties %}, *, {% for field in method.input_message.properties %}{{ field.name }}: {% if field.zero == "None" and not field.type.startswith("Optional[") %}Optional[{{ field.type }}]{% else %}{{ field.type }}{% endif %} = {{ field.zero }}{% if not loop.last %}, {% endif %}{% endfor %}{% endif %}) -> {% if method.server_streaming %}AsyncGenerator[{{ method.output }}, None]{% else %}{{ method.output }}{% endif %}:
-        {% if method.comment %}
+    def __init__(self, channel):
+        {% for method in service.methods %}
+            {% if method.comment %}
 {{ method.comment }}
 
-        {% endif %}
-        request = {{ method.input }}()
-        {% for field in method.input_message.properties %}
-            {% if field.field_type == 'message' %}
-        if {{ field.name }} is not None:
-            request.{{ field.name }} = {{ field.name }}
-            {% else %}
-        request.{{ field.name }} = {{ field.name }}
             {% endif %}
-        {% endfor %}
 
-        {% if method.server_streaming %}
-        async for response in self._unary_stream(
+            {% if method.server_streaming %}
+        self.{{ method.py_name }} = channel.unary_stream(
+            {% else %}
+        self.{{ method.py_name }} = channel.unary_unary(
+            {% endif %}
             "{{ method.route }}",
-            request,
-            {{ method.output }},
-        ):
-            yield response
-        {% else %}
-        return await self._unary_unary(
-            "{{ method.route }}",
-            request,
-            {{ method.output }},
+            request_serializer=bytes,
+            response_deserializer=lambda response: {{ method.output }}().parse(response),
         )
-        {% endif %}
 
-    {% endfor %}
+
+        {% endfor %}
 {% endfor %}
