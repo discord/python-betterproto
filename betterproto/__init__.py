@@ -742,16 +742,16 @@ class Message(ABC):
                         output[cased_name] = v
                 elif isinstance(v, list):
                     # Convert each item.
-                    v = [i.to_dict(casing, include_default_values) for i in v]
+                    v = [i.to_dict(casing, include_default_values, enum_as_int) for i in v]
                     if v or include_default_values:
                         output[cased_name] = v
                 else:
                     if v._serialized_on_wire or include_default_values:
-                        output[cased_name] = v.to_dict(casing, include_default_values)
+                        output[cased_name] = v.to_dict(casing, include_default_values, enum_as_int)
             elif meta.proto_type == "map":
                 for k in v:
                     if hasattr(v[k], "to_dict"):
-                        v[k] = v[k].to_dict(casing, include_default_values)
+                        v[k] = v[k].to_dict(casing, include_default_values, enum_as_int)
 
                 if v or include_default_values:
                     output[cased_name] = v
