@@ -713,7 +713,7 @@ class Message(ABC):
         return cls().parse(data)
 
     def to_dict(
-        self, casing: Casing = Casing.CAMEL, include_default_values: bool = False
+            self, casing: Casing = Casing.CAMEL, include_default_values: bool = False, enum_as_int: bool = False
     ) -> dict:
         """
         Returns a dict representation of this message instance which can be
@@ -769,9 +769,12 @@ class Message(ABC):
                 elif meta.proto_type == TYPE_ENUM:
                     enum_values = list(self._cls_for(field))  # type: ignore
                     if isinstance(v, list):
-                        output[cased_name] = [enum_values[e].name for e in v]
+                        if enum_as_int:
+                            output[cased_name] = [enum_values[e] for e in v]
+                        else:
+                            output[cased_name] = [enum_values[e].name for e in v]
                     else:
-                        output[cased_name] = enum_values[v].name
+                        output[cased_name] = enum_values[v] if enum_as_int else enum_values[v].name
                 else:
                     output[cased_name] = v
         return output
