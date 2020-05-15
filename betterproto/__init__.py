@@ -713,7 +713,7 @@ class Message(ABC):
         return cls().parse(data)
 
     def to_dict(
-            self, casing: Casing = Casing.CAMEL, include_default_values: bool = False, enum_as_int: bool = False
+            self, casing: Casing = Casing.CAMEL, include_default_values: bool = False, enum_as_int: bool = False, for_json: bool = True
     ) -> dict:
         """
         Returns a dict representation of this message instance which can be
@@ -733,48 +733,66 @@ class Message(ABC):
             if meta.proto_type == "message":
                 if isinstance(v, datetime):
                     if v != DATETIME_ZERO or include_default_values:
-                        output[cased_name] = _Timestamp.timestamp_to_json(v)
+                        if for_json:
+                            output[cased_name] = _Timestamp.timestamp_to_json(v)
+                        else:
+                            output[cased_name] = v
                 elif isinstance(v, timedelta):
                     if v != timedelta(0) or include_default_values:
-                        output[cased_name] = _Duration.delta_to_json(v)
+                        if for_json:
+                            output[cased_name] = _Duration.delta_to_json(v)
+                        else:
+                            output[cased_name] = v
                 elif meta.wraps:
                     if v is not None or include_default_values:
                         output[cased_name] = v
                 elif isinstance(v, list):
                     # Convert each item.
-                    v = [i.to_dict(casing, include_default_values, enum_as_int) for i in v]
+                    v = [i.to_dict(casing, include_default_values, enum_as_int, for_json) for i in v]
                     if v or include_default_values:
                         output[cased_name] = v
                 else:
                     if v._serialized_on_wire or include_default_values:
-                        output[cased_name] = v.to_dict(casing, include_default_values, enum_as_int)
+                        output[cased_name] = v.to_dict(casing, include_default_values, enum_as_int, for_json)
             elif meta.proto_type == "map":
                 for k in v:
                     if hasattr(v[k], "to_dict"):
-                        v[k] = v[k].to_dict(casing, include_default_values, enum_as_int)
+                        v[k] = v[k].to_dict(casing, include_default_values, enum_as_int, for_json)
 
                 if v or include_default_values:
                     output[cased_name] = v
             elif v != self._get_field_default(field, meta) or include_default_values:
                 if meta.proto_type in INT_64_TYPES:
                     if isinstance(v, list):
-                        output[cased_name] = [str(n) for n in v]
+                        if for_json:
+                            output[cased_name] = [str(n) for n in v]
+                        else:
+                            output[cased_name] = [n for n in v]
                     else:
-                        output[cased_name] = str(v)
+                        if for_json:
+                            output[cased_name] = str(v)
+                        else:
+                            output[cased_name] = v
                 elif meta.proto_type == TYPE_BYTES:
                     if isinstance(v, list):
-                        output[cased_name] = [b64encode(b).decode("utf8") for b in v]
+                        if for_json:
+                            output[cased_name] = [b64encode(b).decode("utf8") for b in v]
+                        else:
+                            output[cased_name] = [b for b in v]
                     else:
-                        output[cased_name] = b64encode(v).decode("utf8")
+                        if for_json:
+                            output[cased_name] = b64encode(v).decode("utf8")
+                        else:
+                            output[cased_name] = v
                 elif meta.proto_type == TYPE_ENUM:
                     enum_values = list(self._cls_for(field))  # type: ignore
                     if isinstance(v, list):
-                        if enum_as_int:
+                        if enum_as_int or not for_json:
                             output[cased_name] = [enum_values[e] for e in v]
                         else:
                             output[cased_name] = [enum_values[e].name for e in v]
                     else:
-                        output[cased_name] = enum_values[v] if enum_as_int else enum_values[v].name
+                        output[cased_name] = enum_values[v] if enum_as_int or not for_json else enum_values[v].name
                 else:
                     output[cased_name] = v
         return output
