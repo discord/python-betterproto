@@ -13,6 +13,10 @@ from typing import {% for i in description.typing_imports %}{{ i }}{% if not loo
 
 import betterproto
 
+{% if description.services %}
+import grpc
+{% endif %}
+
 {% for i in description.imports %}
 {{ i }}
 {% endfor %}
@@ -60,7 +64,7 @@ class {{ service.py_name }}Stub(object):
 {{ service.comment }}
 
     {% endif %}
-    def __init__(self, channel):
+    def __init__(self, channel: grpc.Channel):
         {% for method in service.methods %}
             {% if method.comment %}
 {{ method.comment }}
