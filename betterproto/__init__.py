@@ -664,6 +664,7 @@ class Message(ABC):
         fields = {f.metadata["betterproto"].number: f for f in dataclasses.fields(self)}
         for parsed in parse_fields(data):
             if parsed.number in fields:
+                self._serialized_on_wire = True
                 field = fields[parsed.number]
                 meta = FieldMetadata.get(field)
 
